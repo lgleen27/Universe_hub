@@ -43,7 +43,7 @@
     
     <div style="background: white; border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; margin-bottom: 2.5rem;">
 
-        <div style="height: 240px; background: {% if user_profile.cover_photo %} url('{{ user_profile.cover_photo.url }}') {% else %} url('/media/cover_photos/default_cover.png') {% endif %} center/cover no-repeat; position: relative;">
+        <div style="height: 240px; background: {% if user_profile.cover_photo %} url('{{ user_profile.cover_photo.url }}') {% else %} url('/media/cover_photos/default_cover.jpg') {% endif %} center/cover no-repeat; position: relative;">
             {% if is_own_profile %}
             <form id="form-cover" method="POST" enctype="multipart/form-data" style="display: none;">
                 {% csrf_token %}
