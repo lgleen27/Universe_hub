@@ -8,6 +8,12 @@
     <link rel="icon" type="image/x-icon" href="{% static 'img/logo.png' %}">
     
     <link rel="stylesheet" href="{% static 'styles.css' %}?v=2">
+    <!-- TIPOGRAFÍA GLOBAL: INTER (GOOGLE FONTS) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <!-- BIBLIOTECA DE ICONOS -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet" />
 
     <style>
         :root {
@@ -17,7 +23,7 @@
             --gray-slate: #64748b;
         }
         body {
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background: var(--gray-light);
             margin: 0;
             color: #1e293b;
@@ -35,8 +41,10 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    {% include 'includes/navbar.html' %}
     {% block content %}{% endblock %}
     
+    <script src="{% static 'script.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

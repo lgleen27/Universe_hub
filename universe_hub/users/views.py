@@ -3,15 +3,13 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum
 
-from .forms import StudentUserCreationForm
-from .models import StudentUser
-
-from posts.models import Post, Project, Like, Comment, ProjectApplication
-from posts.forms import PostForm, ProjectForm, CommentForm
 from .forms import StudentUserCreationForm, StudentUserUpdateForm
-from posts.models import Post, Project, ProjectApplication
+from .models import StudentUser, Follow
+
+from posts.models import Post, Project, Like, Comment, ProjectApplication, Notification
+from posts.forms import PostForm, ProjectForm, CommentForm
 
 
 CAREER_LABELS = {
@@ -80,32 +78,45 @@ def home(request):
         status='open'
     )
 
+    open_projects_list = list(base_projects)
+    total_vacancies = sum(p.vacancies for p in open_projects_list)
+
     raw_careers = sorted({
         career.strip()
-        for value in base_projects.values_list('target_careers', flat=True)
-        if value
-        for career in value.split(',')
+        for p in open_projects_list
+        if p.target_careers
+        for career in p.target_careers.split(',')
         if career.strip()
     })
 
     available_careers = [
         {
             'value': career,
-            'label': CAREER_LABELS.get(career, career.replace('_', ' ').title())
+            'label': CAREER_LABELS.get(career, career.replace('_', ' ').title()),
+            'projects_count': sum(
+                1 for p in open_projects_list
+                if p.target_careers and career in [c.strip() for c in p.target_careers.split(',')]
+            ),
+            'vacancies': sum(
+                p.vacancies for p in open_projects_list
+                if p.target_careers and career in [c.strip() for c in p.target_careers.split(',')]
+            ),
         }
         for career in raw_careers
     ]
 
-    projects = base_projects
+    filtered_projects = base_projects
 
     if selected_careers:
         career_query = Q()
         for career in selected_careers:
             career_query |= Q(target_careers__icontains=career)
 
-        projects = projects.filter(career_query)
+        filtered_projects = filtered_projects.filter(career_query)
 
-    projects = projects.order_by('-created_at')[:10]
+    active_vacancies = filtered_projects.aggregate(total=Sum('vacancies'))['total'] or 0
+    filtered_projects_count = filtered_projects.count()
+    projects = filtered_projects.order_by('-created_at')[:10]
 
     liked_post_ids = set(
         Like.objects.filter(user=request.user).values_list('post_id', flat=True)
@@ -149,6 +160,9 @@ def home(request):
         'available_careers': available_careers,
         'selected_careers': selected_careers,
         'projects': projects,
+        'filtered_projects_count': filtered_projects_count,
+        'total_vacancies': total_vacancies,
+        'active_vacancies': active_vacancies,
         'liked_post_ids': liked_post_ids,
         'pending_requests': pending_requests,
         'pending_requests_count': pending_requests.count(),
@@ -188,6 +202,14 @@ def toggle_like(request, post_id):
     else:
         Like.objects.create(user=request.user, post=post)
         liked = True
+        if post.author != request.user:
+            Notification.objects.create(
+                recipient=post.author,
+                actor=request.user,
+                notification_type='like',
+                verb='le gustó tu publicación.',
+                post=post
+            )
 
     return JsonResponse({
         'success': True,
@@ -210,10 +232,20 @@ def add_comment(request, post_id):
         comment.post = post
         comment.save()
 
+        if post.author != request.user:
+            Notification.objects.create(
+                recipient=post.author,
+                actor=request.user,
+                notification_type='comment',
+                verb='comentó en tu publicación.',
+                post=post
+            )
+
         return JsonResponse({
             'success': True,
             'comment': {
                 'author': comment.author.username,
+                'author_url': f'/profile/{comment.author.username}/',
                 'content': comment.content,
                 'created_at': comment.created_at.strftime('%d/%m/%Y %H:%M'),
             },
@@ -225,132 +257,44 @@ def add_comment(request, post_id):
         'errors': form.errors,
     }, status=400)
 
-@login_required
-def project_detail(request, project_id):
-    project = get_object_or_404(Project.objects.select_related('owner'), id=project_id)
-
-    existing_application = ProjectApplication.objects.filter(
-        project=project,
-        applicant=request.user
-    ).first()
-
-    is_owner = project.owner == request.user
-
-    context = {
-        'project': project,
-        'existing_application': existing_application,
-        'is_owner': is_owner,
-    }
-    return render(request, 'projects/project_detail.html', context)
-
 
 @login_required
-def apply_to_project(request, project_id):
-    if request.method != 'POST':
-        return redirect('project_detail', project_id=project_id)
-
-    project = get_object_or_404(Project, id=project_id)
-
-    if project.owner == request.user:
-        messages.warning(request, 'No puedes solicitar entrar a tu propio proyecto.')
-        return redirect('project_detail', project_id=project.id)
-
-    application, created = ProjectApplication.objects.get_or_create(
-        project=project,
-        applicant=request.user,
-        defaults={'status': 'pending'}
+def post_detail(request, post_id):
+    post = get_object_or_404(
+        Post.objects.select_related('author').prefetch_related('comments__author', 'likes'),
+        id=post_id
     )
+    comment_form = CommentForm()
+    is_liked = post.likes.filter(user=request.user).exists()
 
-    if created:
-        messages.success(request, 'Tu solicitud fue enviada correctamente.')
-    else:
-        if application.status == 'pending':
-            messages.info(request, 'Ya habías enviado una solicitud a este proyecto.')
-        elif application.status == 'accepted':
-            messages.success(request, 'Ya formas parte de este proyecto.')
-        elif application.status == 'rejected':
-            messages.warning(request, 'Tu solicitud anterior fue rechazada.')
-
-    return redirect('project_detail', project_id=project.id)
-
-@login_required
-def accept_application(request, application_id):
-    if request.method != 'POST':
-        return redirect('home')
-
-    application = get_object_or_404(
-        ProjectApplication.objects.select_related('project', 'applicant'),
-        id=application_id
-    )
-
-    if application.project.owner != request.user:
-        messages.error(request, 'No tienes permiso para aceptar esta solicitud.')
-        return redirect('home')
-
-    if application.status != 'pending':
-        messages.info(request, 'Esta solicitud ya fue procesada.')
-        return redirect('home')
-
-    project = application.project
-
-    if project.vacancies <= 0:
-        project.status = 'closed'
-        project.save(update_fields=['status'])
-        messages.warning(request, 'Este proyecto ya no tiene vacantes disponibles.')
-        return redirect('home')
-
-    application.status = 'accepted'
-    application.save(update_fields=['status'])
-
-    project.vacancies -= 1
-
-    if project.vacancies <= 0:
-        project.vacancies = 0
-        project.status = 'closed'
-        project.save(update_fields=['vacancies', 'status'])
-    else:
-        project.save(update_fields=['vacancies'])
-
-    messages.success(
-        request,
-        f'{application.applicant.username} fue aceptado en "{project.title}".'
-    )
-    return redirect('home')
+    return render(request, 'posts/post_detail.html', {
+        'post': post,
+        'comment_form': comment_form,
+        'is_liked': is_liked,
+        'likes_count': post.likes.count(),
+        'comments_count': post.comments.count(),
+    })
 
 
 @login_required
-def reject_application(request, application_id):
-    if request.method != 'POST':
-        return redirect('home')
-
-    application = get_object_or_404(
-        ProjectApplication.objects.select_related('project', 'applicant'),
-        id=application_id
-    )
-
-    if application.project.owner != request.user:
-        messages.error(request, 'No tienes permiso para rechazar esta solicitud.')
-        return redirect('home')
-
-    if application.status != 'pending':
-        messages.info(request, 'Esta solicitud ya fue procesada.')
-        return redirect('home')
-
-    application.status = 'rejected'
-    application.save(update_fields=['status'])
-
-    messages.warning(
-        request,
-        f'{application.applicant.username} fue rechazado en "{application.project.title}".'
-    )
-    return redirect('home')
-
-@login_required
-def profile(request):
-    user_profile = request.user 
-
-    # --- Lógica para procesar las fotos (POST) ---
+def mark_notifications_read(request):
     if request.method == 'POST':
+        Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+
+
+@login_required
+def profile(request, username=None):
+    if username and username != request.user.username:
+        user_profile = get_object_or_404(StudentUser, username=username)
+        is_own_profile = False
+    else:
+        user_profile = request.user
+        is_own_profile = True
+
+    # --- Lógica para procesar las fotos (POST solo en perfil propio) ---
+    if request.method == 'POST' and is_own_profile:
         # Revisamos si viene la foto de portada
         if 'cover_photo' in request.FILES:
             user_profile.cover_photo = request.FILES['cover_photo']
@@ -366,27 +310,81 @@ def profile(request):
     # --- Lógica para obtener actividad (GET) ---
     
     # 1. Publicaciones hechas por el usuario
-    user_posts = Post.objects.filter(author=user_profile)
+    user_posts = Post.objects.filter(author=user_profile).order_by('-created_at')
     
     # 2. Proyectos que el usuario ha creado
-    user_projects = Project.objects.filter(owner=user_profile)
+    user_projects = Project.objects.filter(owner=user_profile).order_by('-created_at')
     
     # 3. Proyectos donde es colaborador (solicitudes aceptadas)
     joined_projects = ProjectApplication.objects.filter(
         applicant=user_profile, 
         status='accepted'
-    )
-    liked_post_ids = request.user.likes.values_list('post_id', flat=True)
+    ).order_by('-created_at')
+    liked_post_ids = set(request.user.likes.values_list('post_id', flat=True))
+
+    # 4. Datos de la red de seguidores (Follow)
+    followers_count = user_profile.followers.count()
+    following_count = user_profile.following.count()
+    is_following = False
+    if not is_own_profile:
+        is_following = user_profile.followers.filter(follower=request.user).exists()
+
     context = {
         'user_profile': user_profile,
-        'is_own_profile': True,
+        'is_own_profile': is_own_profile,
         'user_posts': user_posts,
         'user_projects': user_projects,
         'joined_projects': joined_projects,
         'liked_post_ids': liked_post_ids,
+        'followers_count': followers_count,
+        'following_count': following_count,
+        'is_following': is_following,
     }
     
     return render(request, 'users/profile.html', context)
+
+
+@login_required
+def toggle_follow(request, username):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+
+    target_user = get_object_or_404(StudentUser, username=username)
+
+    if target_user == request.user:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': 'No puedes seguirte a ti mismo.'
+            }, status=400)
+        messages.warning(request, 'No puedes seguirte a ti mismo.')
+        return redirect('user_profile', username=username)
+
+    follow = Follow.objects.filter(follower=request.user, following=target_user).first()
+    if follow:
+        follow.delete()
+        is_following = False
+    else:
+        Follow.objects.create(follower=request.user, following=target_user)
+        is_following = True
+        if target_user != request.user:
+            Notification.objects.create(
+                recipient=target_user,
+                actor=request.user,
+                notification_type='follow',
+                verb='comenzó a seguirte.'
+            )
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'is_following': is_following,
+            'followers_count': target_user.followers.count(),
+            'following_count': target_user.following.count(),
+        })
+
+    return redirect('user_profile', username=username)
+
 
 @login_required
 def edit_profile(request):

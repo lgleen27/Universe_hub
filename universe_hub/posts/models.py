@@ -188,3 +188,54 @@ class ProjectApplication(models.Model):
 
     def __str__(self):
         return f'{self.applicant.username} -> {self.project.title} ({self.status})'
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('follow', 'Nuevo seguidor'),
+        ('like', 'Me gusta'),
+        ('comment', 'Comentario'),
+        ('project_application', 'Solicitud de proyecto'),
+    ]
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_notifications'
+    )
+    notification_type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES)
+    verb = models.CharField(max_length=255)
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    application = models.ForeignKey(
+        ProjectApplication,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.actor} -> {self.recipient}: {self.verb}"

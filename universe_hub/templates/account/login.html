@@ -6,6 +6,10 @@
 <head>
     <title>Iniciar Sesión - Universe Hub</title>
     <link rel="icon" type="image/x-icon" href="{% static 'img/logo.png' %}">
+    <!-- TIPOGRAFÍA GLOBAL: INTER -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <style>
         :root {
             --indigo-electric: #4f46e5;
@@ -21,12 +25,21 @@
         }
 
         body {
-            font-family: system-ui, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background: linear-gradient(135deg, var(--gray-light) 0%, #e0e7ff 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
         }
 
        .login-container {

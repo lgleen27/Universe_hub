@@ -3,6 +3,10 @@
 
 <head>
     <title>Completar Perfil - Universe Hub</title>
+    <!-- TIPOGRAFÍA GLOBAL: INTER -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <style>
         :root {
             --indigo-electric: #4f46e5;
@@ -10,13 +14,22 @@
         }
 
         body {
-            font-family: system-ui, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
             background: var(--gray-light);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
         }
 
         .card {

@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>Registro - Universe Hub</title>
+    <!-- TIPOGRAFÍA GLOBAL: INTER -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <style>
         :root {
             --indigo-electric: #4f46e5;
@@ -10,10 +14,18 @@
             --gray-slate: #64748b;
         }
         body { 
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background: var(--gray-light);
             margin: 0; padding: 2rem;
             color: var(--gray-slate);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
         }
         .container {
             max-width: 400px; margin: 0 auto;

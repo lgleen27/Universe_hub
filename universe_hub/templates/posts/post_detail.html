@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Publicación de {{ post.author.username }} - Universe Hub{% endblock %}
+
+{% block extra_css %}
+<style>
+    .post-detail-container {
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem 3rem 1rem;
+    }
+
+    .back-nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 1.25rem;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: color 0.2s ease;
+    }
+
+    .back-nav-link:hover {
+        color: var(--primary-hover);
+        text-decoration: underline;
+    }
+
+    .post-detail-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .post-detail-comments-header {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 1.5rem 0 1rem 0;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="post-detail-container">
+    <a href="{% url 'home' %}" class="back-nav-link">
+        <span class="material-symbols-rounded" style="font-size: 1.2rem;">arrow_back</span>
+        Volver al Feed
+    </a>
+
+    <article class="post-card post-detail-card" id="post-{{ post.id }}">
+        <div class="post-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                {% if post.author.profile_picture %}
+                    <img src="{{ post.author.profile_picture.url }}" alt="{{ post.author.username }}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                {% else %}
+                    <img src="/media/profile_pics/default_user.png" alt="{{ post.author.username }}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                {% endif %}
+                <div>
+                    <div class="post-author">
+                        <a href="{% url 'user_profile' post.author.username %}" class="author-link" style="font-weight: 700; font-size: 1rem;">
+                            {{ post.author.get_full_name|default:post.author.username }}
+                        </a>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--muted);">
+                        @{{ post.author.username }} · {{ post.author.major|default:"Estudiante" }}
+                    </div>
+                </div>
+            </div>
+            <div class="post-date" style="font-size: 0.85rem; color: var(--muted);">
+                {{ post.created_at|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+
+        {% if post.content %}
+            <p class="post-content" style="font-size: 1.05rem; line-height: 1.6; margin: 1.25rem 0;">{{ post.content }}</p>
+        {% endif %}
+
+        {% if post.image %}
+            <div class="post-image-wrapper" style="margin: 1.25rem 0;">
+                <img src="{{ post.image.url }}" alt="Imagen de la publicación" class="post-image" style="border-radius: 12px; width: 100%; max-height: 500px; object-fit: cover;">
+            </div>
+        {% endif %}
+
+        {% if post.attachment %}
+            <div class="post-attachment" style="margin: 1.25rem 0;">
+                <span class="post-attachment-badge">{{ post.attachment_extension|upper }}</span>
+                <div class="post-attachment-info">
+                    <strong>{{ post.attachment_name }}</strong>
+                    <a href="{{ post.attachment.url }}" target="_blank" rel="noopener noreferrer">Abrir archivo</a>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="post-meta" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <form method="post" action="{% url 'toggle_like' post.id %}" class="like-form">
+                {% csrf_token %}
+                <button type="submit" class="like-btn">
+                    <span class="like-btn-text">
+                        {% if is_liked %}
+                            ❤️ Me gusta
+                        {% else %}
+                            🤍 Me gusta
+                        {% endif %}
+                    </span>
+                </button>
+            </form>
+
+            <span class="likes-count">
+                {{ likes_count }} me gusta{{ likes_count|pluralize }}
+            </span>
+
+            <span>·</span>
+
+            <span class="comments-count">
+                {{ comments_count }} comentario{{ comments_count|pluralize }}
+            </span>
+        </div>
+
+        <div class="comments-section">
+            <h3 class="post-detail-comments-header">
+                Todos los comentarios ({{ comments_count }})
+            </h3>
+
+            <div class="comments-list">
+                {% for comment in post.comments.all %}
+                    <div class="comment-item">
+                        <div class="comment-author">
+                            <a href="{% url 'user_profile' comment.author.username %}" class="author-link">
+                                {{ comment.author.username }}
+                            </a>
+                        </div>
+                        <div class="comment-text">{{ comment.content }}</div>
+                        <div class="comment-date">{{ comment.created_at|date:"d/m/Y H:i" }}</div>
+                    </div>
+                {% empty %}
+                    <div class="comment-empty">Aún no hay comentarios en esta publicación. ¡Sé el primero en comentar!</div>
+                {% endfor %}
+            </div>
+
+            <form method="post" action="{% url 'add_comment' post.id %}" class="comment-form" style="margin-top: 1.5rem;">
+                {% csrf_token %}
+                <textarea name="content" rows="3" class="comment-input" placeholder="Escribe un comentario público..."></textarea>
+                <button type="submit" class="comment-submit-btn">Publicar comentario</button>
+            </form>
+        </div>
+    </article>
+</div>
+{% endblock %}

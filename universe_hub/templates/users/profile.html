@@ -1,44 +1,6 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="header">
-    <div class="logo">Universe Hub</div>
-    <div class="header-right" style="display: flex; align-items: center; gap: 15px;">
-        <a href="{% url 'home' %}" style="text-decoration: none; color: var(--gray-slate); font-weight: 600;">Inicio</a>
-
-        <div class="profile-menu-container" style="position: relative;">
-            <div id="profile-menu-trigger" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--indigo-electric); font-weight: 600;">
-                {% if user.profile_picture %}
-                <img src="{{ user.profile_picture.url }}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0;">
-                {% else %}
-                <img src="/media/profile_pics/default_user.png" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0;">
-                {% endif %}
-                Mi Perfil <span style="font-size: 0.7rem; margin-left: 2px;">▼</span>
-            </div>
-
-            <div id="profile-dropdown" class="dropdown-menu">
-                <div class="dropdown-header">
-                    <strong>{{ user.get_full_name|default:user.username }}</strong>
-                    <span>{{ user.major|default:"Estudiante" }}</span>
-                </div>
-                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 8px 0;">
-
-                <a href="{% url 'profile' %}">👤 Ver mi perfil</a>
-                <a href="{% url 'edit_profile' %}">⚙️ Configuración</a>
-
-                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 8px 0;">
-
-                <form method="post" action="{% url 'account_logout' %}" style="margin: 0; padding: 0;">
-                    {% csrf_token %}
-                    <button type="submit" class="logout-btn">
-                        🚪 Cerrar sesión
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="feed" style="display: block; max-width: 900px; margin: 0 auto; padding: 0 20px; padding-bottom: 3rem;">
     
     <div style="background: white; border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; margin-bottom: 2.5rem;">
@@ -85,17 +47,32 @@
                     <p style="margin: 0; color: #64748b; font-size: 1rem;">
                         {{ user_profile.university|default:"Universidad no especificada" }}
                     </p>
-                    <div style="margin-top: 15px;">
+                    <div style="margin-top: 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <span style="background: #eff6ff; color: #1e40af; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; border: 1px solid #dbeafe;">
                             {{ user_profile.semester }}° Semestre
                         </span>
+
+                        <div class="profile-follow-stats" style="display: flex; gap: 12px; font-size: 0.9rem; color: #475569;">
+                            <span><strong id="followersCount" style="color: #1e293b;">{{ followers_count }}</strong> seguidor{{ followers_count|pluralize:"es" }}</span>
+                            <span>·</span>
+                            <span><strong id="followingCount" style="color: #1e293b;">{{ following_count }}</strong> siguiendo</span>
+                        </div>
                     </div>
                 </div>
 
                 {% if is_own_profile %}
-                <a href="{% url 'edit_profile' %}" class="post-submit-btn" style="text-decoration: none; padding: 10px 24px; font-size: 0.9rem; width: auto; border-radius: 8px;">
+                <a href="{% url 'edit_profile' %}" class="post-submit-btn" style="text-decoration: none; padding: 10px 24px; font-size: 0.95rem; width: auto; border-radius: var(--radius-md, 12px); display: inline-flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-rounded" style="font-size: 1.25rem;">edit</span>
                     Editar Perfil
                 </a>
+                {% else %}
+                <form id="followForm" method="post" action="{% url 'toggle_follow' user_profile.username %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" id="followBtn" class="follow-btn {% if is_following %}is-following{% endif %}">
+                        <span class="material-symbols-rounded follow-icon">{% if is_following %}check{% else %}person_add{% endif %}</span>
+                        <span id="followBtnText">{% if is_following %}Siguiendo{% else %}Seguir{% endif %}</span>
+                    </button>
+                </form>
                 {% endif %}
             </div>
 
@@ -189,7 +166,7 @@
             
             <div class="post-card" style="padding: 1.5rem; margin: 0; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                 <h3 style="margin-top: 0; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-size: 1.1rem;">
-                    Mis Proyectos
+                    {% if is_own_profile %}Mis Proyectos{% else %}Proyectos{% endif %}
                 </h3>
                 {% for project in user_projects %}
                 <div style="padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
@@ -375,21 +352,5 @@
             if (this.files.length > 0) document.getElementById('form-profile-pic').submit();
         });
     }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const trigger = document.getElementById('profile-menu-trigger');
-        const dropdown = document.getElementById('profile-dropdown');
-        if (trigger && dropdown) {
-            trigger.addEventListener('click', function(e) {
-                e.stopPropagation();
-                dropdown.classList.toggle('show');
-            });
-            document.addEventListener('click', function(e) {
-                if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
-                    dropdown.classList.remove('show');
-                }
-            });
-        }
-    });
 </script>
 {% endblock %}

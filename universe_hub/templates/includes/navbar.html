@@ -1,0 +1,138 @@
+{% load static %}
+<div class="header">
+    <a href="{% url 'home' %}" class="logo">Universe Hub</a>
+
+    <div class="header-right" style="display: flex; align-items: center; gap: 20px;">
+        {% if user.is_authenticated %}
+            <!-- 1. NOTIFICACIONES -->
+            <div class="notification-wrapper">
+                <button class="notification-btn" id="notificationToggle" type="button" title="Notificaciones">
+                    <span class="material-symbols-rounded" style="font-size: 1.5rem; color: #64748b;">notifications</span>
+                    {% if unread_notifications_count > 0 %}
+                        <span class="notification-badge" id="notificationBadge">{{ unread_notifications_count }}</span>
+                    {% endif %}
+                </button>
+
+                <div class="notification-dropdown hidden" id="notificationDropdown">
+                    <div class="notification-dropdown-header">
+                        <h4>Notificaciones</h4>
+                        {% if notifications_list %}
+                            <button id="markNotificationsReadBtn" type="button" class="mark-read-btn">Marcar leídas</button>
+                        {% endif %}
+                    </div>
+
+                    <div class="notification-list" id="notificationItemsContainer">
+                        {% if pending_requests %}
+                            <div class="notification-section-title">Solicitudes de colaboración</div>
+                            {% for application in pending_requests %}
+                                <div class="notification-item application-item">
+                                    <p>
+                                        <strong>{{ application.applicant.username }}</strong>
+                                        quiere unirse a
+                                        <strong>{{ application.project.title }}</strong>
+                                    </p>
+                                    <div class="notification-actions">
+                                        <form method="post" action="{% url 'accept_application' application.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="accept-btn">Aceptar</button>
+                                        </form>
+                                        <form method="post" action="{% url 'reject_application' application.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="reject-btn">Rechazar</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if notifications_list %}
+                            {% if pending_requests %}
+                                <div class="notification-section-title" style="margin-top: 8px;">Actividad</div>
+                            {% endif %}
+                            {% for notif in notifications_list %}
+                                <div class="notification-item notif-record {% if not notif.is_read %}notification-unread{% endif %}">
+                                    <div class="notification-content-row">
+                                        <div class="notification-icon-badge">
+                                            {% if notif.notification_type == 'follow' %}
+                                                <span class="material-symbols-rounded notif-type-icon icon-follow">person_add</span>
+                                            {% elif notif.notification_type == 'like' %}
+                                                <span class="material-symbols-rounded notif-type-icon icon-like">favorite</span>
+                                            {% elif notif.notification_type == 'comment' %}
+                                                <span class="material-symbols-rounded notif-type-icon icon-comment">chat_bubble</span>
+                                            {% else %}
+                                                <span class="material-symbols-rounded notif-type-icon icon-project">folder_shared</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="notification-text-col">
+                                            <p style="margin: 0; font-size: 0.88rem; line-height: 1.35;">
+                                                <a href="{% url 'user_profile' notif.actor.username %}" class="author-link"><strong>{{ notif.actor.username }}</strong></a>
+                                                {{ notif.verb }}
+                                                {% if notif.post %}
+                                                    <a href="{% url 'post_detail' notif.post.id %}" class="notif-target-link">Ver publicación</a>
+                                                {% elif notif.project %}
+                                                    <a href="{% url 'project_detail' notif.project.id %}" class="notif-target-link">Ver proyecto</a>
+                                                {% endif %}
+                                            </p>
+                                            <span class="notification-time">{{ notif.created_at|date:"d M, H:i" }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if not pending_requests and not notifications_list %}
+                            <p class="notification-empty">No tienes notificaciones pendientes.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. MENÚ DESPLEGABLE DE USUARIO -->
+            <div class="profile-menu-container">
+                <div id="profile-menu-trigger">
+                    {% if user.profile_picture %}
+                    <img src="{{ user.profile_picture.url }}" alt="Perfil" class="header-avatar">
+                    {% else %}
+                    <img src="/media/profile_pics/default_user.png" alt="Perfil" class="header-avatar">
+                    {% endif %}
+
+                    <span class="header-user">
+                        Hola, <strong>{{ user.get_full_name|default:user.username }}</strong>
+                    </span>
+
+                    <span class="material-symbols-rounded dropdown-arrow">arrow_drop_down</span>
+                </div>
+
+                <div id="profile-dropdown" class="dropdown-menu">
+                    <div class="dropdown-header">
+                        <strong>{{ user.get_full_name|default:user.username }}</strong>
+                        <span>{{ user.major|default:"Estudiante" }}</span>
+                    </div>
+                    <hr class="dropdown-divider">
+
+                    <a href="{% url 'profile' %}">
+                        <span class="material-symbols-rounded">person</span>
+                        Mi Perfil
+                    </a>
+                    <a href="{% url 'edit_profile' %}">
+                        <span class="material-symbols-rounded">settings</span>
+                        Configuración
+                    </a>
+
+                    <hr class="dropdown-divider">
+
+                    <form method="post" action="{% url 'account_logout' %}" style="margin: 0; padding: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="logout-btn">
+                            <span class="material-symbols-rounded">logout</span>
+                            Cerrar sesión
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% else %}
+            <a href="{% url 'account_login' %}" class="login-link">Iniciar sesión</a>
+            <a href="{% url 'account_signup' %}" class="btn-primary" style="padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">Registrarse</a>
+        {% endif %}
+    </div>
+</div>

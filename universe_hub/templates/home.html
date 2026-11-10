@@ -12,106 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet" />
 </head>
 <body>
-    <div class="header">
-        <div class="logo">Universe Hub</div>
-
-        <!-- ========================================== -->
-        <!-- HEADER DERECHO: NOTIFICACIONES Y PERFIL    -->
-        <!-- ========================================== -->
-        <div class="header-right" style="display: flex; align-items: center; gap: 20px;">
-            {% if user.is_authenticated %}
-                
-                <!-- 1. NOTIFICACIONES (Con nuevo icono de campana) -->
-                <div class="notification-wrapper">
-                    <button class="notification-btn" id="notificationToggle" type="button" style="background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center;">
-                        <span class="material-symbols-rounded" style="font-size: 1.8rem; color: #64748b;">notifications</span>
-                        {% if pending_requests_count > 0 %}
-                            <span class="notification-badge">{{ pending_requests_count }}</span>
-                        {% endif %}
-                    </button>
-
-                    <div class="notification-dropdown hidden" id="notificationDropdown">
-                        <div class="notification-dropdown-header">
-                            <h4>Solicitudes pendientes</h4>
-                        </div>
-                        {% if pending_requests %}
-                            <div class="notification-list">
-                                {% for application in pending_requests %}
-                                    <div class="notification-item">
-                                        <p>
-                                            <strong>{{ application.applicant.username }}</strong>
-                                            quiere unirse a
-                                            <strong>{{ application.project.title }}</strong>
-                                        </p>
-                                        <div class="notification-actions">
-                                            <form method="post" action="{% url 'accept_application' application.id %}">
-                                                {% csrf_token %}
-                                                <button type="submit" class="accept-btn">Aceptar</button>
-                                            </form>
-                                            <form method="post" action="{% url 'reject_application' application.id %}">
-                                                {% csrf_token %}
-                                                <button type="submit" class="reject-btn">Rechazar</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <p class="notification-empty">No tienes solicitudes pendientes.</p>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- 2. MENÚ DESPLEGABLE DE USUARIO (Con flecha y opciones) -->
-                <div class="profile-menu-container" style="position: relative;">
-                    <!-- Botón disparador -->
-                    <div id="profile-menu-trigger" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 5px 8px; border-radius: 8px; transition: background 0.2s;">
-                        {% if user.profile_picture %}
-                        <img src="{{ user.profile_picture.url }}" alt="Perfil" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid var(--indigo-electric);">
-                        {% else %}
-                        <img src="/media/profile_pics/default_user.png" alt="Perfil" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid var(--indigo-electric);">
-                        {% endif %}
-                        
-                        <span class="header-user" style="color: #475569; font-weight: 500;">
-                            Hola, <strong>{{ user.get_full_name|default:user.username }}</strong>
-                        </span>
-                        
-                        <!-- Triángulo de expansión -->
-                        <span class="material-symbols-rounded" style="color: #94a3b8; font-size: 1.3rem;">arrow_drop_down</span>
-                    </div>
-
-                    <!-- Caja de opciones -->
-                    <div id="profile-dropdown" class="dropdown-menu">
-                        <div class="dropdown-header">
-                            <strong>{{ user.get_full_name|default:user.username }}</strong>
-                            <span>{{ user.major|default:"Estudiante" }}</span>
-                        </div>
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 8px 0;">
-
-                        <a href="{% url 'profile' %}">
-                            <span class="material-symbols-rounded">person</span>
-                            Mi Perfil
-                        </a>
-                        <a href="{% url 'edit_profile' %}">
-                            <span class="material-symbols-rounded">settings</span>
-                            Configuración
-                        </a>
-
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 8px 0;">
-
-                        <form method="post" action="{% url 'account_logout' %}" style="margin: 0; padding: 0;">
-                            {% csrf_token %}
-                            <button type="submit" class="logout-btn">
-                                <span class="material-symbols-rounded">logout</span>
-                                Cerrar sesión
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-            {% endif %}
-        </div>
-    </div>
+    {% include 'includes/navbar.html' %}
 
     <!-- Resto del Feed -->
     <div class="feed">
@@ -211,7 +112,9 @@
                 {% for post in posts %}
                     <article class="post-card" id="post-{{ post.id }}">
                         <div class="post-header">
-                            <div class="post-author">{{ post.author.username }}</div>
+                            <div class="post-author">
+                                <a href="{% url 'user_profile' post.author.username %}" class="author-link">{{ post.author.username }}</a>
+                            </div>
                             <div class="post-date">{{ post.created_at|date:"d/m/Y H:i" }}</div>
                         </div>
 
@@ -255,16 +158,26 @@
 
                             <span>·</span>
 
-                            <span class="comments-count">
+                            <a href="{% url 'post_detail' post.id %}" class="comments-count" style="color: inherit; text-decoration: none;">
                                 {{ post.comments.count }} comentario{{ post.comments.count|pluralize }}
-                            </span>
+                            </a>
                         </div>
 
                         <div class="comments-section">
+                            {% if post.comments.count > 2 %}
+                                <div class="view-all-comments-wrap" style="margin-bottom: 0.75rem;">
+                                    <a href="{% url 'post_detail' post.id %}" class="view-all-comments-link" style="color: var(--primary); font-size: 0.88rem; font-weight: 600; text-decoration: none;">
+                                        Ver los {{ post.comments.count }} comentarios...
+                                    </a>
+                                </div>
+                            {% endif %}
+
                             <div class="comments-list">
-                                {% for comment in post.comments.all %}
+                                {% for comment in post.comments.all|slice:":2" %}
                                     <div class="comment-item">
-                                        <div class="comment-author">{{ comment.author.username }}</div>
+                                        <div class="comment-author">
+                                            <a href="{% url 'user_profile' comment.author.username %}" class="author-link">{{ comment.author.username }}</a>
+                                        </div>
                                         <div class="comment-text">{{ comment.content }}</div>
                                         <div class="comment-date">{{ comment.created_at|date:"d/m/Y H:i" }}</div>
                                     </div>
@@ -289,9 +202,13 @@
         </div>
         <div class="feed-column">
         <div>
-                <div class="post-card">
-                    <div class="projects-header">
-                        <h3>Proyectos abiertos</h3>
+                    <div class="projects-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                        <div>
+                            <h3 style="margin: 0 0 4px 0;">Proyectos abiertos</h3>
+                            <span style="font-size: 0.8rem; color: #4f46e5; font-weight: 700; background: #eef2ff; padding: 2px 8px; border-radius: 12px; border: 1px solid #c7d2fe; display: inline-block;">
+                                {{ filtered_projects_count }} proyecto{{ filtered_projects_count|pluralize }} · {{ active_vacancies }} vacante{{ active_vacancies|pluralize }} disponible{{ active_vacancies|pluralize:"s" }}
+                            </span>
+                        </div>
                         <button type="button" class="filter-toggle-btn" id="toggleProjectFilters">
                             Filtros
                         </button>
@@ -303,14 +220,19 @@
 
                             <div class="career-options">
                                 {% for career in available_careers %}
-                                    <label class="career-option">
-                                        <input
-                                            type="checkbox"
-                                            name="career"
-                                            value="{{ career.value }}"
-                                            {% if career.value in selected_careers %}checked{% endif %}
-                                        >
-                                        <span>{{ career.label }}</span>
+                                    <label class="career-option" style="display: flex; justify-content: space-between; align-items: center; width: 100%; cursor: pointer;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <input
+                                                type="checkbox"
+                                                name="career"
+                                                value="{{ career.value }}"
+                                                {% if career.value in selected_careers %}checked{% endif %}
+                                            >
+                                            <span>{{ career.label }}</span>
+                                        </div>
+                                        <span style="font-size: 0.75rem; background: #f1f5f9; color: #475569; padding: 2px 7px; border-radius: 10px; font-weight: 700;">
+                                            {{ career.projects_count }} proyect{{ career.projects_count|pluralize:"o,os" }} ({{ career.vacancies }} vac.)
+                                        </span>
                                     </label>
                                 {% empty %}
                                     <p class="no-careers-text">No hay carreras disponibles para filtrar.</p>
@@ -341,7 +263,7 @@
                             </h4>
 
                             <span style="font-size: 0.85rem; color: #6b7280;">
-                                {{ project.owner.username }} · {{ project.owner.major }}
+                                <a href="{% url 'user_profile' project.owner.username %}" class="author-link" style="color: #4b5563;">{{ project.owner.username }}</a> · {{ project.owner.major }}
                             </span>
 
                             <p style="margin: 0.35rem 0 0.5rem 0;">
@@ -352,8 +274,9 @@
                                 {{ project.get_project_type_display }} · {{ project.get_stage_display }}
                             </div>
 
-                            <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.2rem;">
-                                {{ project.vacancies }} vacante{{ project.vacancies|pluralize }}
+                            <div style="margin-top: 0.35rem; display: inline-flex; align-items: center; gap: 5px; background: #ecfdf5; color: #065f46; padding: 3px 9px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; border: 1px solid #a7f3d0;">
+                                <span class="material-symbols-rounded" style="font-size: 1rem;">group</span>
+                                {{ project.vacancies }} vacante{{ project.vacancies|pluralize }} disponible{{ project.vacancies|pluralize:"s" }}
                             </div>
 
                             <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.2rem;">
@@ -371,7 +294,13 @@
                             {% endif %}
                         </div>
                     {% empty %}
-                        <p>No hay proyectos abiertos aún.</p>
+                        <p style="color: var(--muted); font-size: 0.9rem; padding: 1rem 0;">
+                            {% if selected_careers %}
+                                No se encontraron proyectos para los filtros seleccionados.
+                            {% else %}
+                                No hay proyectos abiertos aún.
+                            {% endif %}
+                        </p>
                     {% endfor %}
                 </div>
             </div>
@@ -536,55 +465,6 @@
 
     <!-- ESTILOS Y LÓGICA -->
     <style>
-        /* Estilos del Dropdown del Usuario */
-        .profile-menu-container { position: relative; }
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            border-radius: 12px;
-            padding: 10px 0;
-            min-width: 220px;
-            z-index: 1000;
-            margin-top: 12px;
-            border: 1px solid #e2e8f0;
-        }
-        .dropdown-menu.show { display: block; animation: fadeIn 0.2s ease; }
-        .dropdown-header { padding: 8px 20px; display: flex; flex-direction: column; }
-        .dropdown-header strong { font-size: 0.95rem; color: #1e293b; }
-        .dropdown-header span { font-size: 0.8rem; color: #64748b; }
-        .dropdown-menu a, .logout-btn {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 20px;
-            color: #475569;
-            text-decoration: none;
-            font-size: 0.95rem;
-            transition: 0.2s;
-            width: 100%;
-            text-align: left;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-family: inherit;
-            box-sizing: border-box;
-            font-weight: 500;
-        }
-        .dropdown-menu a:hover, .logout-btn:hover { background: #f8fafc; color: var(--indigo-electric); }
-        .dropdown-menu a .material-symbols-rounded, .logout-btn .material-symbols-rounded { font-size: 1.25rem; }
-        .logout-btn { color: #ef4444; font-weight: 600; }
-        
-        #profile-menu-trigger:hover { background: #f1f5f9; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
         /* Estilos del botón flotante */
         .fab-container {
             position: fixed;
@@ -673,23 +553,6 @@
                     btn.addEventListener('click', function() {
                         fabContainer.classList.remove('active');
                     });
-                });
-            }
-
-            // Script para el Menú Desplegable del Perfil
-            const profileTrigger = document.getElementById('profile-menu-trigger');
-            const profileDropdown = document.getElementById('profile-dropdown');
-            
-            if (profileTrigger && profileDropdown) {
-                profileTrigger.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    profileDropdown.classList.toggle('show');
-                });
-                
-                document.addEventListener('click', function(e) {
-                    if (!profileDropdown.contains(e.target) && !profileTrigger.contains(e.target)) {
-                        profileDropdown.classList.remove('show');
-                    }
                 });
             }
         });
